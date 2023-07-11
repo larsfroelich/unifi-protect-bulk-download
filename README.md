@@ -3,7 +3,7 @@
 
 
 
-# GPL3 LICENSE SYNOPSIS
+## GPL3 LICENSE SYNOPSIS
 TL;DR* Here's what the license entails:
 
 1. Anyone can copy, modify and distribute this software.
@@ -15,4 +15,4 @@ TL;DR* Here's what the license entails:
 7. Any modifications of this code base MUST be distributed with the same license, GPLv3.
 8. This software is provided without warranty.
 9. The software author or license can not be held liable for any damages inflicted by the software.
-   More information on about the LICENSE can be found here
+   More information on about the LICENSE can be found [here](https://www.gnu.org/licenses/gpl-3.0.en.html)
