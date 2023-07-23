@@ -9,22 +9,30 @@ pub fn parse_args() -> ArgMatches {
                 .arg(
                     clap::Arg::new("uri")
                         .value_name("uri")
+                        .value_parser(clap::value_parser!(String))
                         .help("The uri of the unifi protect server")
+                        .required(true),
+                )
+                .arg(
+                    clap::Arg::new("username")
+                        .value_name("username")
+                        .value_parser(clap::value_parser!(String))
+                        .help("The username for logging into the unifi protect server")
+                        .required(true),
+                ).arg(
+                    clap::Arg::new("password")
+                        .value_name("password")
+                        .value_parser(clap::value_parser!(String))
+                        .help("The password for logging into the unifi protect server")
                         .required(true),
                 )
                 .arg(
                     clap::Arg::new("out_path")
                         .value_name("path")
+                        .value_parser(clap::value_parser!(String))
                         .help("The path to the directory to download the files to")
                         .required(true),
                 )
-                .arg(
-                    clap::Arg::new("config")
-                        .short('c')
-                        .long("config")
-                        .value_name("FILE")
-                        .help("Sets a custom config file"),
-                ),
         );
 
     cmd.get_matches()
