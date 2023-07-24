@@ -13,4 +13,5 @@ license = "GPL-3.0"
 [dependencies]
 clap="4.3"
 tokio="1.11"
-unifi_protect="0.1.0"
+chrono="0.4"
+unifi_protect="0.2.0"

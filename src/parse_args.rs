@@ -19,7 +19,8 @@ pub fn parse_args() -> ArgMatches {
                         .value_parser(clap::value_parser!(String))
                         .help("The username for logging into the unifi protect server")
                         .required(true),
-                ).arg(
+                )
+                .arg(
                     clap::Arg::new("password")
                         .value_name("password")
                         .value_parser(clap::value_parser!(String))
@@ -33,6 +34,29 @@ pub fn parse_args() -> ArgMatches {
                         .help("The path to the directory to download the files to")
                         .required(true),
                 )
+                .arg(
+                    clap::Arg::new("mode")
+                        .value_name("mode")
+                        .value_parser(clap::builder::PossibleValuesParser::new(&[
+                            "daily", "hourly",
+                        ]))
+                        .help("The mode to download the files in (daily or hourly)")
+                        .required(true),
+                )
+                .arg(
+                    clap::Arg::new("start_date")
+                        .value_name("start_date")
+                        .value_parser(clap::value_parser!(String))
+                        .help("The start date to download the files from (YYYY-MM-DD)")
+                        .required(true),
+                )
+                .arg(
+                    clap::Arg::new("end_date")
+                        .value_name("end_date")
+                        .value_parser(clap::value_parser!(String))
+                        .help("The end date to download the files from (YYYY-MM-DD)")
+                        .required(true),
+                ),
         );
 
     cmd.get_matches()
