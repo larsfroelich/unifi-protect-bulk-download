@@ -1,6 +1,6 @@
 [package]
 name = "unifi-protect-bulk-download"
-version = "0.4.8"
+version = "0.4.9"
 edition = "2021"
 homepage = "https://github.com/xlfpx/unifi-protect-bulk-download"
 repository = "https://github.com/xlfpx/unifi-protect-bulk-download"
@@ -14,6 +14,6 @@ license = "GPL-3.0"
 clap="4.3"
 tokio="1.11"
 chrono="0.4"
-unifi_protect="0.4.3"
+unifi_protect="0.4.4"
 sanitize-filename = "0.4.0"
 
