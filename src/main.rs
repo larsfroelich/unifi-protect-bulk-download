@@ -109,24 +109,25 @@ async fn download(args: &ArgMatches) {
             time_frame.0, time_frame.1
         );
         for camera in server.cameras.iter() {
-            let mut file_path = Path::new(&args.get_one::<String>("out_path").unwrap())
-                .join(format!(
-                    "{}-{}-{}.mp4",
-                    time_frame.0.format("%Y-%m-%d-%H"),
-                    camera.name,
-                    &args.get_one::<String>("recording_type").unwrap()
-                )).as_os_str()
-                .to_str()
-                .unwrap()
-                .to_string();
-
+            let mut file_name = format!(
+                "{}-{}-{}.mp4",
+                time_frame.0.format("%Y-%m-%d-%H"),
+                camera.name,
+                &args.get_one::<String>("recording_type").unwrap()
+            );
             // sanitize filename using sanitize-filename
             let options = sanitize_filename::Options {
                 truncate: true, // true by default, truncates to 255 bytes
                 windows: true, // default value depends on the OS, removes reserved names like `con` from start of strings on Windows
                 replacement: "" // str to replace sanitized chars/strings
             };
-            file_path = sanitize_filename::sanitize_with_options(file_path, options);
+            file_name = sanitize_filename::sanitize_with_options(file_name, options);
+
+            let file_path = Path::new(&args.get_one::<String>("out_path").unwrap())
+                .join(file_name).as_os_str()
+                .to_str()
+                .unwrap()
+                .to_string();
 
             // check if file exists
             if Path::new(&file_path).exists() {
