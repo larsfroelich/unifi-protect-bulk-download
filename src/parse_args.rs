@@ -44,6 +44,15 @@ pub fn parse_args() -> ArgMatches {
                         .required(true),
                 )
                 .arg(
+                    clap::Arg::new("recording_type")
+                        .value_name("recording_type")
+                        .value_parser(clap::builder::PossibleValuesParser::new(&[
+                            "rotating", "timelapse",
+                        ]))
+                        .help("The type of recording to download (rotating or timelapse)")
+                        .required(true),
+                )
+                .arg(
                     clap::Arg::new("start_date")
                         .value_name("start_date")
                         .value_parser(clap::value_parser!(String))

@@ -1,3 +1,4 @@
+use std::path::Path;
 use crate::parse_args::parse_args;
 use chrono::{DateTime, Local, NaiveDateTime, TimeZone};
 use clap::ArgMatches;
@@ -74,8 +75,8 @@ async fn download(args: &ArgMatches) {
                 + 1,
         ) {
             for hour in 0..24 {
-                let start_time = date.and_hms(hour, 0, 0);
-                let end_time = date.and_hms(hour, 59, 59);
+                let start_time = date.and_hms_opt(hour, 0, 0).expect("Failed to construct dateTime");
+                let end_time = date.and_hms_opt(hour, 59, 59).expect("Failed to construct dateTime");
                 time_frames.push((
                     Local.from_local_datetime(&start_time).unwrap(),
                     Local.from_local_datetime(&end_time).unwrap(),
@@ -90,8 +91,8 @@ async fn download(args: &ArgMatches) {
                 .num_days() as usize
                 + 1,
         ) {
-            let start_time = date.and_hms(0, 0, 0);
-            let end_time = date.and_hms(23, 59, 59);
+            let start_time = date.and_hms_opt(0, 0, 0).expect("Failed to construct dateTime");
+            let end_time = date.and_hms_opt(23, 59, 59).expect("Failed to construct dateTime");
             time_frames.push((
                 Local.from_local_datetime(&start_time).unwrap(),
                 Local.from_local_datetime(&end_time).unwrap(),
@@ -108,12 +109,17 @@ async fn download(args: &ArgMatches) {
             time_frame.0, time_frame.1
         );
         for camera in server.cameras.iter() {
-            let file_path = format!(
-                "{}/{}-{}.mp4",
-                &args.get_one::<String>("out_path").unwrap(),
-                time_frame.0,
-                camera.name
-            );
+            let file_path = Path::new(&args.get_one::<String>("out_path").unwrap())
+                .join(format!(
+                    "{}-{}-{}.mp4",
+                    time_frame.0.format("%Y-%m-%d-%H"),
+                    camera.name,
+                    &args.get_one::<String>("recording_type").unwrap()
+                )).as_os_str()
+                .to_str()
+                .unwrap()
+                .to_string();
+
             println!(
                 "Downloading rotating video for camera '{}' (file path: {})",
                 camera.name, file_path
@@ -122,7 +128,7 @@ async fn download(args: &ArgMatches) {
                 .download_footage(
                     camera,
                     &file_path,
-                    "rotating",
+                    args.get_one::<String>("recording_type").unwrap(),
                     time_frame.0.timestamp_millis(),
                     time_frame.1.timestamp_millis(),
                 )
