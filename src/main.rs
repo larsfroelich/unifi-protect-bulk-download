@@ -115,13 +115,14 @@ async fn download(args: &ArgMatches) {
                 camera.name,
                 &args.get_one::<String>("recording_type").unwrap()
             );
-            // sanitize filename using sanitize-filename
+            // sanitize filename using sanitize-filename and drop non-ascii symbols
             let options = sanitize_filename::Options {
                 truncate: true, // true by default, truncates to 255 bytes
                 windows: true, // default value depends on the OS, removes reserved names like `con` from start of strings on Windows
                 replacement: "" // str to replace sanitized chars/strings
             };
-            file_name = sanitize_filename::sanitize_with_options(file_name, options);
+            file_name = sanitize_filename::sanitize_with_options(file_name, options)
+                .chars().filter(|s| s.is_ascii()).collect::<String>();
 
             let file_path = Path::new(&args.get_one::<String>("out_path").unwrap())
                 .join(file_name).as_os_str()
