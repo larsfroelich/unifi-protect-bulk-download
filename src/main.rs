@@ -120,6 +120,12 @@ async fn download(args: &ArgMatches) {
                 .unwrap()
                 .to_string();
 
+
+            // check if file exists
+            if Path::new(&file_path).exists() {
+                println!("File '{}' already exists, skipping...", file_path);
+                continue;
+            }
             println!(
                 "Downloading rotating video for camera '{}' (file path: {})",
                 camera.name, file_path
