@@ -136,7 +136,8 @@ async fn download(args: &ArgMatches) {
                 continue;
             }
             println!(
-                "Downloading rotating video for camera '{}' (file path: {})",
+                "Downloading {} video for camera '{}' (file path: {})",
+                args.get_one::<String>("recording_type").unwrap(),
                 camera.name, file_path
             );
             if !server
