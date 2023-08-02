@@ -8,7 +8,6 @@ description = "A tool to bulk download videos from a Unifi Protect NVR"
 authors = ["Lars Frölich"]
 license = "GPL-3.0"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 clap="4.3"
