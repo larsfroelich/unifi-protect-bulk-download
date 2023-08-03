@@ -1123,7 +1123,7 @@ dependencies = [
 
 [[package]]
 name = "unifi-protect-bulk-download"
-version = "0.4.10"
+version = "0.4.11"
 dependencies = [
  "chrono",
  "clap",
@@ -1134,9 +1134,9 @@ dependencies = [
 
 [[package]]
 name = "unifi_protect"
-version = "0.4.5"
+version = "0.4.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "19f2871047ded95733e3866c527f58d5b9125bdd28104b02bdebbec92244d0ee"
+checksum = "a456f34149f0ae4ba25a83ba52cc99c1b962f90a408f356410e1068a72a87d72"
 dependencies = [
  "http",
  "reqwest",
