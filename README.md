@@ -1,5 +1,5 @@
 # Unifi-Protect footage bulk download tool
-This CLI-tool allows you to download all footage from your Unifi-Protect NVR. It is written in Rust and uses the [unifi-protect](https://github.com/xlfpx/unifi-protect-bulk-download) crate to communicate with the Unifi-Protect API.
+This CLI-tool allows you to download all footage from your Unifi-Protect NVR. It is written in Rust and uses the [unifi-protect](https://github.com/xlfpx/unifi-protect-rust) crate to communicate with the Unifi-Protect API.
 
 # Installation
 1. Install rust & cargo if not installed: https://rust-lang.org/tools/install
