@@ -9,7 +9,6 @@ mod parse_args;
 #[tokio::main]
 async fn main() {
     let args = parse_args();
-    println!("Args: {:?}!", args);
 
     match args.subcommand() {
         Some(("download", args)) => {
