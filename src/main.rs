@@ -45,12 +45,12 @@ async fn download(args: &ArgMatches) {
     println!("Logged in!");
     println!("Fetching cameras...");
     server
-        .fetch_cameras()
+        .fetch_cameras(false)
         .await
         .expect("Failed to fetch cameras");
 
-    println!("Found {} cameras", server.cameras.len());
-    for camera in server.cameras.iter() {
+    println!("Found {} cameras", server.cameras_simple.len());
+    for camera in server.cameras_simple.iter() {
         println!(
             "Camera: {} {} {} '{}'",
             (if camera.is_connected {
@@ -108,7 +108,7 @@ async fn download(args: &ArgMatches) {
             "Downloading video for time frame '{}' to '{}'",
             time_frame.0, time_frame.1
         );
-        for camera in server.cameras.iter() {
+        for camera in server.cameras_simple.iter() {
             let mut file_name = format!(
                 "{}-{}-{}.mp4",
                 time_frame.0.format("%Y-%m-%d-%H"),
