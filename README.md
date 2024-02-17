@@ -5,6 +5,9 @@ This CLI-tool allows you to download all footage from your Unifi-Protect NVR. It
 1. Install rust & cargo if not installed: https://rust-lang.org/tools/install
 2. Install this CLI-tool: `cargo install unifi-protect-bulk-download`
 
+### Docker
+Alternatively, you can also use Docker to run the tool without installing Rust: `docker run -it unifiprotect/unifi-protect-bulk-download download <uri> <username> <password> <path> <mode> <recording_type> <start_date> <end_date>`
+
 # Usage
 `unifi_protect_bulk_download download <uri> <username> <password> <path> <mode> <recording_type> <start_date> <end_date>`
 
