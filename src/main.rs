@@ -112,6 +112,10 @@ async fn download(args: &ArgMatches) {
             time_frame.0, time_frame.1
         );
         for camera in server.cameras_simple.iter() {
+            // check if camera name or id is in the list of cameras to download but if list contains all or * then download all
+            if !cameras.contains(&camera.name) && !cameras.contains(&camera.id) && !cameras.contains(&"*".to_string()) && !cameras.contains(&"all".to_string()) {
+                continue;
+            }
             let mut file_name = format!(
                 "{}-{}-{}.mp4",
                 time_frame.0.format("%Y-%m-%d-%H"),
