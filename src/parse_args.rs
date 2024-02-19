@@ -70,7 +70,7 @@ pub fn parse_args() -> ArgMatches {
                     clap::Arg::new("cameras")
                         .value_name("cameras")
                         .value_parser(clap::value_parser!(String))
-                        .help("A comma-separated list of cameras")
+                        .help("A comma-separated list of cameras if you want to download from specific cameras, or 'all'/'*' to download from all cameras")
                         .value_delimiter(',')
                         .required(true),
                 ),
