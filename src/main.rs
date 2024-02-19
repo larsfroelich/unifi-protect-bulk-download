@@ -32,6 +32,10 @@ async fn download(args: &ArgMatches) {
     )
     .expect("Failed to parse end date");
 
+    let cameras: Vec<String> = args.get_many::<String>("cameras").unwrap().map(|s| s.to_string()).collect();
+
+    println!("Cameras to Download: {:?}", cameras);
+
     let mut server = UnifiProtectServer::new(args.get_one::<String>("uri").unwrap());
     println!("Logging in...");
     server
