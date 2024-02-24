@@ -1,4 +1,4 @@
-use clap::{Subcommand, Parser};
+use clap::{Subcommand, Parser, Args};
 
 /// Tool for bulk-downloading recordings from unifi protect
 #[derive(Parser, Debug)]
@@ -10,58 +10,50 @@ help_template = "{before-help}{name} {version} by {author}
 {all-args}{after-help}")]
 pub struct Cli {
     #[command(subcommand)]
-    command: Commands,
+    pub command: Commands,
 }
 // https://stackoverflow.com/questions/71991935/how-to-make-a-default-subcommand-with-clap-and-derive
 #[derive(Subcommand, Debug)]
-enum Commands {
+pub enum Commands {
     /// Bulk-download recordings from unifi protect
-    Download {
-        /// The uri of the unifi protect server host (e.g. "192.168.0.12")
-        #[arg(long)]
-        host: String,
-
-        /// The username for logging into the unifi protect server
-        #[arg(short, long)]
-        username: String,
-
-        /// The password for logging into the unifi protect server
-        #[arg(short, long)]
-        password: String,
-
-        /// The path to the directory to download the files to
-        #[arg(long, default_value_t = String::from("./unifi-protect-export/"))]
-        path: String,
-
-        /// The mode to download the files in (daily or hourly)
-        #[arg(long, default_value_t = String::from("daily"),
-            value_parser = clap::builder::PossibleValuesParser::new(&["daily", "hourly",])
-        )]
-        mode: String,
-
-        /// The type of recording to download (rotating or timelapse)
-        #[arg(long, default_value_t = String::from("daily"),
-            value_parser = clap::builder::PossibleValuesParser::new(&["rotating", "timelapse",])
-        )]
-        recording_type: String,
-
-        /// The start date to download the files from (YYYY-MM-DD or "now", "today", "yesterday", "2023")
-        #[arg(long, default_value_t = String::from("today"))]
-        start_date: String,
-
-        /// The end date to download the files from (YYYY-MM-DD)
-        #[arg(long, default_value_t = String::from("now"))]
-        end_date: String,
-    },
+    Download(DownloadCommand)
 }
 
+#[derive(Args, Debug)]
+pub struct DownloadCommand {
+    /// The uri of the unifi protect server host (e.g. "192.168.0.12")
+    #[arg(long)]
+    pub host: String,
 
-pub fn parse_args() -> Cli {
-    /*let cmd = Command::new("cargo")
-        .bin_name("unifi_protect_bulk_download")
-        .version("0.1.0")
-        .subcommand(
-        );
-*/
-    Cli::parse()
+    /// The username for logging into the unifi protect server
+    #[arg(short, long)]
+    pub username: String,
+
+    /// The password for logging into the unifi protect server
+    #[arg(short, long)]
+    pub password: String,
+
+    /// The path to the directory to download the files to
+    #[arg(long, default_value_t = String::from("./unifi-protect-export/"))]
+    pub path: String,
+
+    /// The mode to download the files in (daily or hourly)
+    #[arg(long, default_value_t = String::from("daily"),
+    value_parser = clap::builder::PossibleValuesParser::new(&["daily", "hourly",])
+    )]
+    pub mode: String,
+
+    /// The type of recording to download (rotating or timelapse)
+    #[arg(long, default_value_t = String::from("daily"),
+    value_parser = clap::builder::PossibleValuesParser::new(&["rotating", "timelapse",])
+    )]
+    pub recording_type: String,
+
+    /// The start date to download the files from (YYYY-MM-DD or "now", "today", "yesterday", "2023")
+    #[arg(long, default_value_t = String::from("today"))]
+    pub start_date: String,
+
+    /// The end date to download the files from (YYYY-MM-DD)
+    #[arg(long, default_value_t = String::from("now"))]
+    pub end_date: String,
 }
