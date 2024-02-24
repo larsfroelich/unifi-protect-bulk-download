@@ -10,7 +10,7 @@ license = "GPL-3.0"
 
 
 [dependencies]
-clap="4.3"
+clap= { version = "4.3", features = ["derive"] }
 tokio="1.11"
 chrono="0.4"
 unifi_protect="0.5.2"

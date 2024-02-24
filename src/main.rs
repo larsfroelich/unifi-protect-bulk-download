@@ -10,14 +10,15 @@ mod parse_args;
 async fn main() {
     let args = parse_args();
 
-    match args.subcommand() {
+    println!("{:?}", args);
+    /*match args.subcommand() {
         Some(("download", args)) => {
             download(args).await;
         }
         _ => {
             println!("No subcommand found!");
         }
-    }
+    }*/
 }
 
 async fn download(args: &ArgMatches) {
