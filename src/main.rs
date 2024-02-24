@@ -1,34 +1,28 @@
 use std::path::Path;
-use crate::parse_args::parse_args;
+use parse_args::{Cli, Commands, DownloadCommand};
 use chrono::{DateTime, Local, NaiveDateTime, TimeZone};
-use clap::ArgMatches;
+use clap::Parser;
 use unifi_protect::*;
 
 mod parse_args;
 
 #[tokio::main]
 async fn main() {
-    let args = parse_args();
+    let args = Cli::parse();
 
-    println!("{:?}", args);
-    /*match args.subcommand() {
-        Some(("download", args)) => {
-            download(args).await;
-        }
-        _ => {
-            println!("No subcommand found!");
-        }
-    }*/
+    match args.command {
+        Commands::Download(download_cmd) => download(download_cmd).await,
+    };
 }
 
-async fn download(args: &ArgMatches) {
+async fn download(download_cmd: DownloadCommand) {
     let start_date = NaiveDateTime::parse_from_str(
-        &(String::from(args.get_one::<String>("start_date").unwrap()) + "-00:00:01"),
+        &(download_cmd.start_date + "-00:00:01"),
         "%Y-%m-%d-%H:%M:%S",
     )
     .expect("Failed to parse start date");
     let end_date = NaiveDateTime::parse_from_str(
-        &(String::from(args.get_one::<String>("end_date").unwrap()) + "-00:00:01"),
+        &(download_cmd.end_date + "-00:00:01"),
         "%Y-%m-%d-%H:%M:%S",
     )
     .expect("Failed to parse end date");
@@ -41,8 +35,8 @@ async fn download(args: &ArgMatches) {
     println!("Logging in...");
     server
         .login(
-            args.get_one::<String>("username").unwrap(),
-            args.get_one::<String>("password").unwrap(),
+            &*download_cmd.username,
+            &*download_cmd.password,
         )
         .await
         .expect("Failed to login");
@@ -70,7 +64,7 @@ async fn download(args: &ArgMatches) {
 
     // Calculate time frames
     let mut time_frames: Vec<(DateTime<Local>, DateTime<Local>)> = vec![];
-    if args.get_one::<String>("mode").unwrap() == "hourly" {
+    if download_cmd.mode == "hourly" {
         for date in start_date.date().iter_days().take(
             end_date
                 .date()
@@ -87,7 +81,7 @@ async fn download(args: &ArgMatches) {
                 ));
             }
         }
-    } else if args.get_one::<String>("mode").unwrap() == "daily" {
+    } else if download_cmd.mode == "daily" {
         for date in start_date.date().iter_days().take(
             end_date
                 .date()
@@ -121,7 +115,7 @@ async fn download(args: &ArgMatches) {
                 "{}-{}-{}.mp4",
                 time_frame.0.format("%Y-%m-%d-%H"),
                 camera.name,
-                &args.get_one::<String>("recording_type").unwrap()
+                download_cmd.recording_type
             );
             // sanitize filename using sanitize-filename and drop non-ascii symbols
             let options = sanitize_filename::Options {
@@ -132,7 +126,7 @@ async fn download(args: &ArgMatches) {
             file_name = sanitize_filename::sanitize_with_options(file_name, options)
                 .chars().filter(|s| s.is_ascii()).collect::<String>();
 
-            let file_path = Path::new(&args.get_one::<String>("out_path").unwrap())
+            let file_path = Path::new(&download_cmd.path)
                 .join(file_name).as_os_str()
                 .to_str()
                 .unwrap()
@@ -145,14 +139,14 @@ async fn download(args: &ArgMatches) {
             }
             println!(
                 "Downloading {} video for camera '{}' (file path: {})",
-                args.get_one::<String>("recording_type").unwrap(),
+                download_cmd.recording_type,
                 camera.name, file_path
             );
             if !server
                 .download_footage(
                     camera,
                     &file_path,
-                    args.get_one::<String>("recording_type").unwrap(),
+                    &*download_cmd.recording_type,
                     time_frame.0.timestamp_millis(),
                     time_frame.1.timestamp_millis(),
                 )
