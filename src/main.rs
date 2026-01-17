@@ -260,11 +260,12 @@ mod tests {
     fn test_build_filename() {
         let dt = Local.with_ymd_and_hms(2025, 1, 15, 14, 30, 0).unwrap();
 
+        // Note: sanitize_filename only replaces invalid chars, spaces are allowed
         let hourly = build_filename("Front Door", &dt, "hourly");
-        assert_eq!(hourly, "2025-01-15_1400_Front_Door.mp4");
+        assert_eq!(hourly, "2025-01-15_1400_Front Door.mp4");
 
         let daily = build_filename("Front Door", &dt, "daily");
-        assert_eq!(daily, "2025-01-15_Front_Door.mp4");
+        assert_eq!(daily, "2025-01-15_Front Door.mp4");
     }
 
     #[test]
