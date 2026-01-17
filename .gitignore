@@ -11,3 +11,4 @@ cargo.lock
 # Test Wave
 !test_audio.wav
 
+.claude_consciousness.m8
