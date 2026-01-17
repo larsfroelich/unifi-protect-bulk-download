@@ -12,3 +12,6 @@ cargo.lock
 !test_audio.wav
 
 .claude_consciousness.m8
+.claude-flow/
+*.db
+.hive-mind/
