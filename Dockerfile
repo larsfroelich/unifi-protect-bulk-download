@@ -6,4 +6,4 @@ COPY Cargo.toml .
 
 RUN cargo install --path .
 
-ENTRYPOINT ["unifi-protect-bulk-download"]
+ENTRYPOINT ["unifi-protect-bulk-download"]h

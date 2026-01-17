@@ -3,3 +3,11 @@
 
 # JetBrains IDEs
 .idea/
+.ds_store/
+.claude/
+cargo.lock
+
+
+# Test Wave
+!test_audio.wav
+
