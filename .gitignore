@@ -13,5 +13,3 @@ cargo.lock
 
 .claude_consciousness.m8
 .claude-flow/
-*.db
-.hive-mind/
