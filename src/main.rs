@@ -1,5 +1,5 @@
 use crate::parse_args::{parse_args, Commands, DownloadArgs, DownloadMode};
-use chrono::{DateTime, Local, NaiveDateTime, TimeZone};
+use chrono::{DateTime, Duration, Local, NaiveDate, NaiveDateTime, TimeZone, Timelike};
 use std::path::Path;
 use unifi_protect::*;
 
@@ -17,14 +17,13 @@ async fn main() {
 }
 
 async fn download(args: &DownloadArgs) {
-    let start_date = NaiveDateTime::parse_from_str(
-        &(args.start_date.clone() + "-00:00:01"),
-        "%Y-%m-%d-%H:%M:%S",
-    )
-    .expect("Failed to parse start date");
-    let end_date =
-        NaiveDateTime::parse_from_str(&(args.end_date.clone() + "-00:00:01"), "%Y-%m-%d-%H:%M:%S")
-            .expect("Failed to parse end date");
+    let start_date =
+        parse_date_or_hour(&args.start_date, true).expect("Failed to parse start date");
+    let end_date = parse_date_or_hour(&args.end_date, false).expect("Failed to parse end date");
+
+    if end_date < start_date {
+        panic!("Invalid date range: end date/time is before start date/time");
+    }
 
     let cameras = args.cameras.clone();
 
@@ -61,44 +60,57 @@ async fn download(args: &DownloadArgs) {
     // Calculate time frames
     let mut time_frames: Vec<(DateTime<Local>, DateTime<Local>)> = vec![];
     if matches!(args.mode, DownloadMode::Hourly) {
-        for date in start_date.date().iter_days().take(
-            end_date
+        let mut cursor = start_date;
+        while cursor <= end_date {
+            let hour_start = cursor
                 .date()
-                .signed_duration_since(start_date.date())
-                .num_days() as usize
-                + 1,
-        ) {
-            for hour in 0..24 {
-                let start_time = date
-                    .and_hms_opt(hour, 0, 0)
-                    .expect("Failed to construct dateTime");
-                let end_time = date
-                    .and_hms_opt(hour, 59, 59)
-                    .expect("Failed to construct dateTime");
-                time_frames.push((
-                    Local.from_local_datetime(&start_time).unwrap(),
-                    Local.from_local_datetime(&end_time).unwrap(),
-                ));
-            }
+                .and_hms_opt(cursor.time().hour(), 0, 0)
+                .expect("Failed to construct dateTime");
+            let hour_end = hour_start + Duration::hours(1) - Duration::seconds(1);
+
+            let frame_start = if hour_start < start_date {
+                start_date
+            } else {
+                hour_start
+            };
+            let frame_end = if hour_end > end_date {
+                end_date
+            } else {
+                hour_end
+            };
+
+            time_frames.push((
+                Local.from_local_datetime(&frame_start).unwrap(),
+                Local.from_local_datetime(&frame_end).unwrap(),
+            ));
+            cursor = hour_start + Duration::hours(1);
         }
     } else if matches!(args.mode, DownloadMode::Daily) {
-        for date in start_date.date().iter_days().take(
-            end_date
-                .date()
-                .signed_duration_since(start_date.date())
-                .num_days() as usize
-                + 1,
-        ) {
-            let start_time = date
+        let mut date = start_date.date();
+        while date <= end_date.date() {
+            let day_start = date
                 .and_hms_opt(0, 0, 0)
                 .expect("Failed to construct dateTime");
-            let end_time = date
+            let day_end = date
                 .and_hms_opt(23, 59, 59)
                 .expect("Failed to construct dateTime");
+
+            let frame_start = if day_start < start_date {
+                start_date
+            } else {
+                day_start
+            };
+            let frame_end = if day_end > end_date {
+                end_date
+            } else {
+                day_end
+            };
+
             time_frames.push((
-                Local.from_local_datetime(&start_time).unwrap(),
-                Local.from_local_datetime(&end_time).unwrap(),
+                Local.from_local_datetime(&frame_start).unwrap(),
+                Local.from_local_datetime(&frame_end).unwrap(),
             ));
+            date = date.succ_opt().expect("Failed to calculate next date");
         }
     } else {
         println!("Invalid mode!");
@@ -173,4 +185,24 @@ async fn download(args: &DownloadArgs) {
         }
     }
     return;
+}
+
+fn parse_date_or_hour(
+    date_or_hour: &str,
+    is_start: bool,
+) -> Result<NaiveDateTime, chrono::ParseError> {
+    if let Ok(date_time) = NaiveDateTime::parse_from_str(date_or_hour, "%Y-%m-%d-%H") {
+        return Ok(date_time);
+    }
+
+    let date = NaiveDate::parse_from_str(date_or_hour, "%Y-%m-%d")?;
+    if is_start {
+        Ok(date
+            .and_hms_opt(0, 0, 0)
+            .expect("Failed to construct dateTime"))
+    } else {
+        Ok(date
+            .and_hms_opt(23, 59, 59)
+            .expect("Failed to construct dateTime"))
+    }
 }

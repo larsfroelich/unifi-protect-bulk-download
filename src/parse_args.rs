@@ -35,9 +35,9 @@ pub struct DownloadArgs {
     pub mode: DownloadMode,
     /// The type of recording to download.
     pub recording_type: RecordingType,
-    /// The start date to download files from (YYYY-MM-DD).
+    /// The start date/time to download files from (YYYY-MM-DD or YYYY-MM-DD-HH).
     pub start_date: String,
-    /// The end date to download files to (YYYY-MM-DD).
+    /// The end date/time to download files to (YYYY-MM-DD or YYYY-MM-DD-HH).
     pub end_date: String,
     /// Comma-separated list of camera names/ids, or `all` / `*`.
     #[arg(value_delimiter = ',')]
