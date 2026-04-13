@@ -37,7 +37,7 @@ In the above example, replace:
 6. __2023-06-01__ (or for hourly precision __2023-06-01-08__) with the start date/time of the footage you want to download
 6. __2023-07-31__ (or for hourly precision __2023-07-31-18__) with the end date/time of the footage you want to download
 
-To download only specific hours (for example daylight hours), use `hourly` mode with hour precision in the date inputs.
+To download only specific hours (for example daylight hours), specify the start and end date/time in the format __YYYY-MM-DD-HH__ (for example __2023-06-01-08__).
 
 ## GPL3 LICENSE SYNOPSIS
 TL;DR* Here's what the license entails:
