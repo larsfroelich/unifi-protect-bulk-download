@@ -1,0 +1,5 @@
+# Rust binaries
+/target
+
+# JetBrains IDEs
+.idea
