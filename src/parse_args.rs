@@ -1,80 +1,70 @@
-use clap::{ArgMatches, Command};
+use clap::{Parser, Subcommand, ValueEnum};
 
-pub fn parse_args() -> ArgMatches {
-    let cmd = Command::new("cargo")
-        .bin_name("unifi_protect_bulk_download")
-        .version("0.1.0")
-        .subcommand(
-            Command::new("download")
-                .arg(
-                    clap::Arg::new("uri")
-                        .value_name("uri")
-                        .value_parser(clap::value_parser!(String))
-                        .help("The uri of the unifi protect server")
-                        .required(true),
-                )
-                .arg(
-                    clap::Arg::new("username")
-                        .value_name("username")
-                        .value_parser(clap::value_parser!(String))
-                        .help("The username for logging into the unifi protect server")
-                        .required(true),
-                )
-                .arg(
-                    clap::Arg::new("password")
-                        .value_name("password")
-                        .value_parser(clap::value_parser!(String))
-                        .help("The password for logging into the unifi protect server")
-                        .required(true),
-                )
-                .arg(
-                    clap::Arg::new("out_path")
-                        .value_name("path")
-                        .value_parser(clap::value_parser!(String))
-                        .help("The path to the directory to download the files to")
-                        .required(true),
-                )
-                .arg(
-                    clap::Arg::new("mode")
-                        .value_name("mode")
-                        .value_parser(clap::builder::PossibleValuesParser::new(&[
-                            "daily", "hourly",
-                        ]))
-                        .help("The mode to download the files in (daily or hourly)")
-                        .required(true),
-                )
-                .arg(
-                    clap::Arg::new("recording_type")
-                        .value_name("recording_type")
-                        .value_parser(clap::builder::PossibleValuesParser::new(&[
-                            "rotating", "timelapse",
-                        ]))
-                        .help("The type of recording to download (rotating or timelapse)")
-                        .required(true),
-                )
-                .arg(
-                    clap::Arg::new("start_date")
-                        .value_name("start_date")
-                        .value_parser(clap::value_parser!(String))
-                        .help("The start date to download the files from (YYYY-MM-DD)")
-                        .required(true),
-                )
-                .arg(
-                    clap::Arg::new("end_date")
-                        .value_name("end_date")
-                        .value_parser(clap::value_parser!(String))
-                        .help("The end date to download the files from (YYYY-MM-DD)")
-                        .required(true),
-                )
-                .arg(
-                    clap::Arg::new("cameras")
-                        .value_name("cameras")
-                        .value_parser(clap::value_parser!(String))
-                        .help("A comma-separated list of cameras if you want to download from specific cameras, or 'all'/'*' to download from all cameras")
-                        .value_delimiter(',')
-                        .required(true),
-                ),
-        );
+/// Tool for bulk-downloading recordings from unifi protect.
+#[derive(Parser, Debug)]
+#[command(
+    author,
+    version,
+    about,
+    long_about = None,
+    propagate_version = true,
+    help_template = "{before-help}{name} {version} by {author}\n{about-with-newline}\n{usage-heading} {usage}\n\n{all-args}{after-help}"
+)]
+pub struct Cli {
+    #[command(subcommand)]
+    pub command: Commands,
+}
 
-    cmd.get_matches()
+#[derive(Subcommand, Debug)]
+pub enum Commands {
+    /// Download footage from the UniFi Protect server.
+    Download(DownloadArgs),
+}
+
+#[derive(clap::Args, Debug)]
+pub struct DownloadArgs {
+    /// The URI of the UniFi Protect server.
+    pub uri: String,
+    /// The username for logging into the UniFi Protect server.
+    pub username: String,
+    /// The password for logging into the UniFi Protect server.
+    pub password: String,
+    /// The path to the directory to download files to.
+    pub out_path: String,
+    /// The mode to download files in.
+    pub mode: DownloadMode,
+    /// The type of recording to download.
+    pub recording_type: RecordingType,
+    /// The start date to download files from (YYYY-MM-DD).
+    pub start_date: String,
+    /// The end date to download files to (YYYY-MM-DD).
+    pub end_date: String,
+    /// Comma-separated list of camera names/ids, or `all` / `*`.
+    #[arg(value_delimiter = ',')]
+    pub cameras: Vec<String>,
+}
+
+#[derive(Clone, Debug, ValueEnum)]
+pub enum DownloadMode {
+    Daily,
+    Hourly,
+}
+
+#[derive(Clone, Debug, ValueEnum)]
+pub enum RecordingType {
+    Rotating,
+    Timelapse,
+}
+
+impl RecordingType {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::Rotating => "rotating",
+            Self::Timelapse => "timelapse",
+        }
+    }
+}
+
+pub fn parse_args() -> Cli {
+    Cli::parse()
 }
