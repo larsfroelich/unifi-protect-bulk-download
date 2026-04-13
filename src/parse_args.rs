@@ -65,6 +65,14 @@ pub fn parse_args() -> ArgMatches {
                         .value_parser(clap::value_parser!(String))
                         .help("The end date to download the files from (YYYY-MM-DD)")
                         .required(true),
+                )
+                .arg(
+                    clap::Arg::new("cameras")
+                        .value_name("cameras")
+                        .value_parser(clap::value_parser!(String))
+                        .help("A comma-separated list of cameras if you want to download from specific cameras, or 'all'/'*' to download from all cameras")
+                        .value_delimiter(',')
+                        .required(true),
                 ),
         );
 

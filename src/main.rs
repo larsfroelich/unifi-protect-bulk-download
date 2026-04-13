@@ -32,6 +32,10 @@ async fn download(args: &ArgMatches) {
     )
     .expect("Failed to parse end date");
 
+    let cameras: Vec<String> = args.get_many::<String>("cameras").unwrap().map(|s| s.to_string()).collect();
+
+    println!("Cameras to Download: {:?}", cameras);
+
     let mut server = UnifiProtectServer::new(args.get_one::<String>("uri").unwrap());
     println!("Logging in...");
     server
@@ -108,6 +112,10 @@ async fn download(args: &ArgMatches) {
             time_frame.0, time_frame.1
         );
         for camera in server.cameras_simple.iter() {
+            // check if camera name or id is in the list of cameras to download but if list contains all or * then download all
+            if !cameras.contains(&camera.name) && !cameras.contains(&camera.id) && !cameras.contains(&"*".to_string()) && !cameras.contains(&"all".to_string()) {
+                continue;
+            }
             let mut file_name = format!(
                 "{}-{}-{}.mp4",
                 time_frame.0.format("%Y-%m-%d-%H"),
