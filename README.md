@@ -18,8 +18,8 @@ Arguments:
 - \<path>            The path to the directory to download the files to
 - \<mode>            The mode to download the files in (daily or hourly) [possible values: daily, hourly]
 - \<recording_type>  The type of recording to download (rotating or timelapse) [possible values: rotating, timelapse]
-- \<start_date>      The start date to download the files from (YYYY-MM-DD)
-- \<end_date>        The end date to download the files from (YYYY-MM-DD)
+- \<start_date>      The start date/time to download files from (YYYY-MM-DD or YYYY-MM-DD-HH)
+- \<end_date>        The end date/time to download files to (YYYY-MM-DD or YYYY-MM-DD-HH)
 
 
 # Example
@@ -34,8 +34,10 @@ In the above example, replace:
 4. __/path/to/destination/folder__ with the path to the folder where you want to download the footage to
 5. __daily__ with __hourly__ in case you want one video per camera per hour, rather than per day of footage
 6. __rotating__ with __timelapse__ in case you want to download timelapse footage rather than real time recordings
-6. __2023-06-01__ with the start date of the footage you want to download
-6. __2023-07-31__ with the end date of the footage you want to download
+6. __2023-06-01__ (or for hourly precision __2023-06-01-08__) with the start date/time of the footage you want to download
+6. __2023-07-31__ (or for hourly precision __2023-07-31-18__) with the end date/time of the footage you want to download
+
+To download only specific hours (for example daylight hours), use `hourly` mode with hour precision in the date inputs.
 
 ## GPL3 LICENSE SYNOPSIS
 TL;DR* Here's what the license entails:
