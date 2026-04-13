@@ -1531,7 +1531,7 @@ dependencies = [
 
 [[package]]
 name = "unifi-protect-bulk-download"
-version = "0.5.2"
+version = "0.6.0"
 dependencies = [
  "chrono",
  "clap",
