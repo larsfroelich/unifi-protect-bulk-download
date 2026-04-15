@@ -15,3 +15,6 @@ tokio="1.11"
 chrono="0.4"
 unifi_protect="0.6.0"
 sanitize-filename = "0.6.0"
+
+[dev-dependencies]
+chrono-tz = "0.10"
