@@ -64,7 +64,7 @@ async fn download(args: &DownloadArgs) {
     if matches!(args.mode, DownloadMode::Hourly) {
         let mut cursor = start_date;
         while cursor <= end_date {
-            let (hour_start, hour_end) = match hour_frame_bounds(&Local, cursor) {
+            let (hour_start, hour_end) = match hour_frame_bounds(cursor) {
                 Ok(bounds) => bounds,
                 Err(err) => {
                     println!("Skipping hour frame for '{}': {}", cursor, err);
@@ -88,6 +88,8 @@ async fn download(args: &DownloadArgs) {
                 hour_end
             };
 
+            // Resolve local boundaries with explicit DST handling so timestamps passed
+            // to download_footage are deterministic across ambiguous transitions.
             let frame_start = resolve_local_datetime(&Local, frame_start, BoundaryKind::Start)
                 .expect("Failed to resolve frame start in local timezone");
             let frame_end = resolve_local_datetime(&Local, frame_end, BoundaryKind::End)
@@ -99,7 +101,7 @@ async fn download(args: &DownloadArgs) {
         let mut date = start_date.date();
         while date <= end_date.date() {
             let (day_start, day_end) =
-                day_frame_bounds(&Local, date).expect("Failed to construct local day frame bounds");
+                day_frame_bounds(date).expect("Failed to construct local day frame bounds");
 
             let frame_start = if day_start < start_date {
                 start_date
@@ -112,6 +114,8 @@ async fn download(args: &DownloadArgs) {
                 day_end
             };
 
+            // Resolve local boundaries with explicit DST handling so timestamps passed
+            // to download_footage are deterministic across ambiguous transitions.
             let frame_start = resolve_local_datetime(&Local, frame_start, BoundaryKind::Start)
                 .expect("Failed to resolve frame start in local timezone");
             let frame_end = resolve_local_datetime(&Local, frame_end, BoundaryKind::End)
@@ -218,10 +222,19 @@ fn parse_date_or_hour(
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 enum BoundaryKind {
+    // For duplicated local times during fall DST transition, select the earliest
+    // instant for a frame start so we don't miss data at the beginning.
     Start,
+    // For duplicated local times during fall DST transition, select the latest
+    // instant for a frame end so frame windows remain inclusive.
     End,
 }
 
+// Convert a naive local timestamp into a timezone-aware timestamp with explicit
+// DST behavior:
+// - Single: use the only valid instant.
+// - Ambiguous: pick earliest for starts, latest for ends (deterministic).
+// - None: return an error for skipped local timestamps (spring DST transition).
 fn resolve_local_datetime<Tz: TimeZone>(
     tz: &Tz,
     local_datetime: NaiveDateTime,
@@ -240,10 +253,8 @@ fn resolve_local_datetime<Tz: TimeZone>(
     }
 }
 
-fn day_frame_bounds<Tz: TimeZone>(
-    _tz: &Tz,
-    date: NaiveDate,
-) -> Result<(NaiveDateTime, NaiveDateTime), String> {
+// Build naive day boundaries before timezone conversion.
+fn day_frame_bounds(date: NaiveDate) -> Result<(NaiveDateTime, NaiveDateTime), String> {
     let day_start = date
         .and_hms_opt(0, 0, 0)
         .ok_or_else(|| format!("Failed to construct start of day for '{}'", date))?;
@@ -253,10 +264,8 @@ fn day_frame_bounds<Tz: TimeZone>(
     Ok((day_start, day_end))
 }
 
-fn hour_frame_bounds<Tz: TimeZone>(
-    _tz: &Tz,
-    date_time: NaiveDateTime,
-) -> Result<(NaiveDateTime, NaiveDateTime), String> {
+// Build naive hour boundaries before timezone conversion.
+fn hour_frame_bounds(date_time: NaiveDateTime) -> Result<(NaiveDateTime, NaiveDateTime), String> {
     let hour_start = date_time
         .date()
         .and_hms_opt(date_time.time().hour(), 0, 0)
