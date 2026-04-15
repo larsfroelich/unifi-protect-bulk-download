@@ -1,6 +1,9 @@
 use crate::parse_args::{parse_args, Commands, DownloadArgs, DownloadMode};
 use chrono::{DateTime, Duration, Local, NaiveDate, NaiveDateTime, TimeZone, Timelike};
+use rpassword::prompt_password;
+use std::env;
 use std::path::Path;
+use std::process;
 use unifi_protect::*;
 
 mod parse_args;
@@ -11,12 +14,59 @@ async fn main() {
 
     match args.command {
         Commands::Download(download_args) => {
-            download(&download_args).await;
+            let password = match resolve_password_source(&download_args) {
+                Ok(password) => password,
+                Err(message) => {
+                    eprintln!("{message}");
+                    process::exit(2);
+                }
+            };
+            download(&download_args, &password).await;
         }
     }
 }
 
-async fn download(args: &DownloadArgs) {
+fn resolve_password_source(args: &DownloadArgs) -> Result<String, String> {
+    if let Some(password) = &args.password {
+        return Ok(password.clone());
+    }
+
+    if let Some(password_env) = &args.password_env {
+        match env::var(password_env) {
+            Ok(password) if !password.is_empty() => return Ok(password),
+            Ok(_) => {
+                return Err(format!(
+                    "Environment variable '{password_env}' is set but empty. Provide --password, \
+                     use a non-empty --password-env value, or enter password at the prompt."
+                ));
+            }
+            Err(_) => {
+                return Err(format!(
+                    "Environment variable '{password_env}' was not found. Provide --password, \
+                     set --password-env to an existing variable, or enter password at the prompt."
+                ));
+            }
+        }
+    }
+
+    let prompt = "UniFi Protect password (input hidden, press Enter when done): ".to_string();
+    let password = prompt_password(prompt).map_err(|error| {
+        format!(
+            "No password provided and interactive prompt failed ({error}). Use --password or --password-env <VAR>."
+        )
+    })?;
+
+    if password.is_empty() {
+        return Err(
+            "No password provided. Use --password, --password-env <VAR>, or enter a non-empty password at the prompt."
+                .to_string(),
+        );
+    }
+
+    Ok(password)
+}
+
+async fn download(args: &DownloadArgs, password: &str) {
     let start_date =
         parse_date_or_hour(&args.start_date, true).expect("Failed to parse start date");
     let end_date = parse_date_or_hour(&args.end_date, false).expect("Failed to parse end date");
@@ -32,7 +82,7 @@ async fn download(args: &DownloadArgs) {
     let mut server = UnifiProtectServer::new(&args.uri);
     println!("Logging in...");
     server
-        .login(&args.username, &args.password)
+        .login(&args.username, password)
         .await
         .expect("Failed to login");
     println!("Logged in!");
