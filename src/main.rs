@@ -1,5 +1,7 @@
 use crate::parse_args::{parse_args, Commands, DownloadArgs, DownloadMode};
-use chrono::{DateTime, Duration, Local, NaiveDate, NaiveDateTime, TimeZone, Timelike};
+use chrono::{
+    DateTime, Duration, Local, LocalResult, NaiveDate, NaiveDateTime, TimeZone, Timelike,
+};
 use std::path::Path;
 use unifi_protect::*;
 
@@ -62,11 +64,18 @@ async fn download(args: &DownloadArgs) {
     if matches!(args.mode, DownloadMode::Hourly) {
         let mut cursor = start_date;
         while cursor <= end_date {
-            let hour_start = cursor
-                .date()
-                .and_hms_opt(cursor.time().hour(), 0, 0)
-                .expect("Failed to construct dateTime");
-            let hour_end = hour_start + Duration::hours(1) - Duration::seconds(1);
+            let (hour_start, hour_end) = match hour_frame_bounds(&Local, cursor) {
+                Ok(bounds) => bounds,
+                Err(err) => {
+                    println!("Skipping hour frame for '{}': {}", cursor, err);
+                    cursor = cursor
+                        .date()
+                        .and_hms_opt(cursor.time().hour(), 0, 0)
+                        .expect("Failed to construct dateTime")
+                        + Duration::hours(1);
+                    continue;
+                }
+            };
 
             let frame_start = if hour_start < start_date {
                 start_date
@@ -79,21 +88,18 @@ async fn download(args: &DownloadArgs) {
                 hour_end
             };
 
-            time_frames.push((
-                Local.from_local_datetime(&frame_start).unwrap(),
-                Local.from_local_datetime(&frame_end).unwrap(),
-            ));
+            let frame_start = resolve_local_datetime(&Local, frame_start, BoundaryKind::Start)
+                .expect("Failed to resolve frame start in local timezone");
+            let frame_end = resolve_local_datetime(&Local, frame_end, BoundaryKind::End)
+                .expect("Failed to resolve frame end in local timezone");
+            time_frames.push((frame_start, frame_end));
             cursor = hour_start + Duration::hours(1);
         }
     } else if matches!(args.mode, DownloadMode::Daily) {
         let mut date = start_date.date();
         while date <= end_date.date() {
-            let day_start = date
-                .and_hms_opt(0, 0, 0)
-                .expect("Failed to construct dateTime");
-            let day_end = date
-                .and_hms_opt(23, 59, 59)
-                .expect("Failed to construct dateTime");
+            let (day_start, day_end) =
+                day_frame_bounds(&Local, date).expect("Failed to construct local day frame bounds");
 
             let frame_start = if day_start < start_date {
                 start_date
@@ -106,10 +112,11 @@ async fn download(args: &DownloadArgs) {
                 day_end
             };
 
-            time_frames.push((
-                Local.from_local_datetime(&frame_start).unwrap(),
-                Local.from_local_datetime(&frame_end).unwrap(),
-            ));
+            let frame_start = resolve_local_datetime(&Local, frame_start, BoundaryKind::Start)
+                .expect("Failed to resolve frame start in local timezone");
+            let frame_end = resolve_local_datetime(&Local, frame_end, BoundaryKind::End)
+                .expect("Failed to resolve frame end in local timezone");
+            time_frames.push((frame_start, frame_end));
             date = date.succ_opt().expect("Failed to calculate next date");
         }
     } else {
@@ -206,5 +213,107 @@ fn parse_date_or_hour(
         Ok(date
             .and_hms_opt(23, 59, 59)
             .expect("Failed to construct dateTime"))
+    }
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+enum BoundaryKind {
+    Start,
+    End,
+}
+
+fn resolve_local_datetime<Tz: TimeZone>(
+    tz: &Tz,
+    local_datetime: NaiveDateTime,
+    boundary_kind: BoundaryKind,
+) -> Result<DateTime<Tz>, String> {
+    match tz.from_local_datetime(&local_datetime) {
+        LocalResult::Single(datetime) => Ok(datetime),
+        LocalResult::Ambiguous(earliest, latest) => Ok(match boundary_kind {
+            BoundaryKind::Start => earliest,
+            BoundaryKind::End => latest,
+        }),
+        LocalResult::None => Err(format!(
+            "Local datetime '{}' does not exist in the target timezone",
+            local_datetime
+        )),
+    }
+}
+
+fn day_frame_bounds<Tz: TimeZone>(
+    _tz: &Tz,
+    date: NaiveDate,
+) -> Result<(NaiveDateTime, NaiveDateTime), String> {
+    let day_start = date
+        .and_hms_opt(0, 0, 0)
+        .ok_or_else(|| format!("Failed to construct start of day for '{}'", date))?;
+    let day_end = date
+        .and_hms_opt(23, 59, 59)
+        .ok_or_else(|| format!("Failed to construct end of day for '{}'", date))?;
+    Ok((day_start, day_end))
+}
+
+fn hour_frame_bounds<Tz: TimeZone>(
+    _tz: &Tz,
+    date_time: NaiveDateTime,
+) -> Result<(NaiveDateTime, NaiveDateTime), String> {
+    let hour_start = date_time
+        .date()
+        .and_hms_opt(date_time.time().hour(), 0, 0)
+        .ok_or_else(|| format!("Failed to construct start of hour for '{}'", date_time))?;
+    let hour_end = hour_start + Duration::hours(1) - Duration::seconds(1);
+    Ok((hour_start, hour_end))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{resolve_local_datetime, BoundaryKind};
+    use chrono::{NaiveDate, TimeZone, Utc};
+    use chrono_tz::America::New_York;
+
+    #[test]
+    fn resolves_ambiguous_hour_deterministically() {
+        let ambiguous = New_York
+            .with_ymd_and_hms(2025, 11, 2, 1, 30, 0)
+            .earliest()
+            .expect("Expected local time to be ambiguous")
+            .naive_local();
+
+        let start_dt = resolve_local_datetime(&New_York, ambiguous, BoundaryKind::Start)
+            .expect("Start boundary resolution should succeed");
+        let end_dt = resolve_local_datetime(&New_York, ambiguous, BoundaryKind::End)
+            .expect("End boundary resolution should succeed");
+
+        assert_eq!(
+            start_dt.with_timezone(&Utc).timestamp(),
+            1_762_061_400,
+            "Start boundary should consistently choose earliest UTC instant"
+        );
+        assert_eq!(
+            end_dt.with_timezone(&Utc).timestamp(),
+            1_762_065_000,
+            "End boundary should consistently choose latest UTC instant"
+        );
+    }
+
+    #[test]
+    fn returns_error_for_skipped_hour() {
+        let skipped = NaiveDate::from_ymd_opt(2025, 3, 9)
+            .expect("Expected valid date")
+            .and_hms_opt(2, 30, 0)
+            .expect("Expected valid naive local timestamp");
+        assert!(
+            New_York
+                .with_ymd_and_hms(2025, 3, 9, 2, 30, 0)
+                .single()
+                .is_none(),
+            "Expected skipped hour in spring DST transition"
+        );
+
+        let result = resolve_local_datetime(&New_York, skipped, BoundaryKind::Start);
+        assert!(
+            result.is_err(),
+            "Skipped local timestamp must return an error"
+        );
     }
 }
