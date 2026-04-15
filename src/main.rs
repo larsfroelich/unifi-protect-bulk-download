@@ -1,6 +1,9 @@
 use crate::parse_args::{parse_args, Commands, DownloadArgs, DownloadMode};
-use chrono::{DateTime, Duration, Local, NaiveDate, NaiveDateTime, TimeZone, Timelike};
-use std::path::Path;
+use chrono::{
+    DateTime, Duration, Local, LocalResult, NaiveDate, NaiveDateTime, TimeZone, Timelike,
+};
+use std::fmt;
+use std::path::{Path, PathBuf};
 use unifi_protect::*;
 
 mod parse_args;
@@ -11,18 +14,107 @@ async fn main() {
 
     match args.command {
         Commands::Download(download_args) => {
-            download(&download_args).await;
+            if let Err(error) = download(&download_args).await {
+                eprintln!("Download failed: {}", error);
+                std::process::exit(1);
+            }
         }
     }
 }
 
-async fn download(args: &DownloadArgs) {
+#[derive(Debug)]
+enum AppError {
+    ParseDate {
+        input: String,
+        source: chrono::ParseError,
+    },
+    InvalidDateRange {
+        start: NaiveDateTime,
+        end: NaiveDateTime,
+    },
+    DateConstruction {
+        context: String,
+    },
+    DateConversion {
+        context: String,
+    },
+    DateOverflow {
+        context: String,
+    },
+    InvalidMode {
+        mode: String,
+    },
+    Api {
+        context: String,
+        source: String,
+    },
+}
+
+impl fmt::Display for AppError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            AppError::ParseDate { input, source } => {
+                write!(f, "failed to parse date '{}': {}", input, source)
+            }
+            AppError::InvalidDateRange { start, end } => {
+                write!(
+                    f,
+                    "invalid date range: end date/time '{}' is before start date/time '{}'",
+                    end, start
+                )
+            }
+            AppError::DateConstruction { context } => write!(f, "invalid date/time: {}", context),
+            AppError::DateConversion { context } => {
+                write!(f, "time zone conversion failed: {}", context)
+            }
+            AppError::DateOverflow { context } => write!(f, "date arithmetic failed: {}", context),
+            AppError::InvalidMode { mode } => write!(f, "invalid download mode '{}'", mode),
+            AppError::Api { context, source } => write!(f, "{}: {}", context, source),
+        }
+    }
+}
+
+impl std::error::Error for AppError {}
+
+fn to_local(naive: NaiveDateTime, context: String) -> Result<DateTime<Local>, AppError> {
+    match Local.from_local_datetime(&naive) {
+        LocalResult::Single(dt) => Ok(dt),
+        LocalResult::Ambiguous(first, second) => Err(AppError::DateConversion {
+            context: format!(
+                "{} ({}) is ambiguous between '{}' and '{}'",
+                context, naive, first, second
+            ),
+        }),
+        LocalResult::None => Err(AppError::DateConversion {
+            context: format!("{} ({}) does not exist in local timezone", context, naive),
+        }),
+    }
+}
+
+fn api_error(context: impl Into<String>, source: impl Into<String>) -> AppError {
+    AppError::Api {
+        context: context.into(),
+        source: source.into(),
+    }
+}
+
+async fn download(args: &DownloadArgs) -> Result<(), AppError> {
     let start_date =
-        parse_date_or_hour(&args.start_date, true).expect("Failed to parse start date");
-    let end_date = parse_date_or_hour(&args.end_date, false).expect("Failed to parse end date");
+        parse_date_or_hour(&args.start_date, true).map_err(|source| AppError::ParseDate {
+            input: args.start_date.clone(),
+            source,
+        })?;
+    let end_date =
+        parse_date_or_hour(&args.end_date, false).map_err(|source| AppError::ParseDate {
+            input: args.end_date.clone(),
+            source,
+        })?;
 
     if end_date < start_date {
-        panic!("Invalid date range: end date/time is before start date/time");
+        return Err(AppError::InvalidDateRange {
+            start: start_date,
+            end: end_date,
+        });
     }
 
     let cameras = args.cameras.clone();
@@ -34,13 +126,13 @@ async fn download(args: &DownloadArgs) {
     server
         .login(&args.username, &args.password)
         .await
-        .expect("Failed to login");
+        .map_err(|source| api_error(format!("failed to login to '{}'", args.uri), source))?;
     println!("Logged in!");
     println!("Fetching cameras...");
     server
         .fetch_cameras(false)
         .await
-        .expect("Failed to fetch cameras");
+        .map_err(|source| api_error("failed to fetch cameras", source))?;
 
     println!("Found {} cameras", server.cameras_simple.len());
     for camera in server.cameras_simple.iter() {
@@ -65,7 +157,9 @@ async fn download(args: &DownloadArgs) {
             let hour_start = cursor
                 .date()
                 .and_hms_opt(cursor.time().hour(), 0, 0)
-                .expect("Failed to construct dateTime");
+                .ok_or_else(|| AppError::DateConstruction {
+                    context: format!("failed to build hour start from '{}'", cursor),
+                })?;
             let hour_end = hour_start + Duration::hours(1) - Duration::seconds(1);
 
             let frame_start = if hour_start < start_date {
@@ -80,20 +174,24 @@ async fn download(args: &DownloadArgs) {
             };
 
             time_frames.push((
-                Local.from_local_datetime(&frame_start).unwrap(),
-                Local.from_local_datetime(&frame_end).unwrap(),
+                to_local(frame_start, "hourly frame start".to_string())?,
+                to_local(frame_end, "hourly frame end".to_string())?,
             ));
             cursor = hour_start + Duration::hours(1);
         }
     } else if matches!(args.mode, DownloadMode::Daily) {
         let mut date = start_date.date();
         while date <= end_date.date() {
-            let day_start = date
-                .and_hms_opt(0, 0, 0)
-                .expect("Failed to construct dateTime");
-            let day_end = date
-                .and_hms_opt(23, 59, 59)
-                .expect("Failed to construct dateTime");
+            let day_start =
+                date.and_hms_opt(0, 0, 0)
+                    .ok_or_else(|| AppError::DateConstruction {
+                        context: format!("failed to build day start from '{}'", date),
+                    })?;
+            let day_end =
+                date.and_hms_opt(23, 59, 59)
+                    .ok_or_else(|| AppError::DateConstruction {
+                        context: format!("failed to build day end from '{}'", date),
+                    })?;
 
             let frame_start = if day_start < start_date {
                 start_date
@@ -107,13 +205,17 @@ async fn download(args: &DownloadArgs) {
             };
 
             time_frames.push((
-                Local.from_local_datetime(&frame_start).unwrap(),
-                Local.from_local_datetime(&frame_end).unwrap(),
+                to_local(frame_start, "daily frame start".to_string())?,
+                to_local(frame_end, "daily frame end".to_string())?,
             ));
-            date = date.succ_opt().expect("Failed to calculate next date");
+            date = date.succ_opt().ok_or_else(|| AppError::DateOverflow {
+                context: format!("failed to calculate next day after '{}'", date),
+            })?;
         }
     } else {
-        println!("Invalid mode!");
+        return Err(AppError::InvalidMode {
+            mode: format!("{:?}", args.mode),
+        });
     }
 
     println!("Downloading videos...");
@@ -148,34 +250,44 @@ async fn download(args: &DownloadArgs) {
                 .filter(|s| s.is_ascii())
                 .collect::<String>();
 
-            let file_path = Path::new(&args.out_path)
-                .join(file_name)
-                .as_os_str()
-                .to_str()
-                .unwrap()
-                .to_string();
+            let file_path: PathBuf = Path::new(&args.out_path).join(file_name);
+            let file_path_display = file_path.display().to_string();
+            let file_path_lossy = file_path.to_string_lossy().to_string();
 
             // check if file exists
-            if Path::new(&file_path).exists() {
-                println!("File '{}' already exists, skipping...", file_path);
+            if file_path.exists() {
+                println!("File '{}' already exists, skipping...", file_path_display);
                 continue;
             }
             println!(
                 "Downloading {} video for camera '{}' (file path: {})",
                 args.recording_type.as_str(),
                 camera.name,
-                file_path
+                file_path_display
             );
             if !server
                 .download_footage(
                     camera,
-                    &file_path,
+                    &file_path_lossy,
                     args.recording_type.as_str(),
                     time_frame.0.timestamp_millis(),
                     time_frame.1.timestamp_millis(),
                 )
                 .await
-                .expect("Failed to download video")
+                .map_err(|source| {
+                    api_error(
+                        format!(
+                            "failed to download {} video for camera '{}' ({}) for timeframe '{}' to '{}' into '{}'",
+                            args.recording_type.as_str(),
+                            camera.name,
+                            camera.id,
+                            time_frame.0,
+                            time_frame.1,
+                            file_path_display
+                        ),
+                        source,
+                    )
+                })?
             {
                 println!(
                     "No video found for time frame '{}' to '{}' for camera '{}'",
@@ -184,7 +296,7 @@ async fn download(args: &DownloadArgs) {
             }
         }
     }
-    return;
+    Ok(())
 }
 
 fn parse_date_or_hour(
@@ -199,12 +311,11 @@ fn parse_date_or_hour(
     // hourly parsing failed, try to parse as date (YYYY-MM-DD)
     let date = NaiveDate::parse_from_str(date_or_hour, "%Y-%m-%d")?;
     if is_start {
-        Ok(date
-            .and_hms_opt(0, 0, 0)
-            .expect("Failed to construct dateTime"))
+        NaiveDateTime::parse_from_str(&format!("{}-00", date.format("%Y-%m-%d")), "%Y-%m-%d-%H")
     } else {
-        Ok(date
-            .and_hms_opt(23, 59, 59)
-            .expect("Failed to construct dateTime"))
+        NaiveDateTime::parse_from_str(
+            &format!("{}-23-59-59", date.format("%Y-%m-%d")),
+            "%Y-%m-%d-%H-%M-%S",
+        )
     }
 }
