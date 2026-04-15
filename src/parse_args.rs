@@ -28,7 +28,11 @@ pub struct DownloadArgs {
     /// The username for logging into the UniFi Protect server.
     pub username: String,
     /// The password for logging into the UniFi Protect server.
-    pub password: String,
+    #[arg(long)]
+    pub password: Option<String>,
+    /// Environment variable name containing the password.
+    #[arg(long = "password-env", value_name = "VAR")]
+    pub password_env: Option<String>,
     /// The path to the directory to download files to.
     pub out_path: String,
     /// The mode to download files in.

@@ -9,35 +9,48 @@ This CLI-tool allows you to download all footage from your Unifi-Protect NVR. It
 Alternatively, you can also use Docker to run the tool without installing Rust: `docker run -it unifiprotect/unifi-protect-bulk-download download`
 
 # Usage
-`unifi_protect_bulk_download download <uri> <username> <password> <path> <mode> <recording_type> <start_date> <end_date>`
+`unifi_protect_bulk_download download <uri> <username> [--password <PASSWORD> | --password-env <VAR>] <path> <mode> <recording_type> <start_date> <end_date> <cameras>`
 
 Arguments:
 - \<uri>             The uri of the unifi protect server
 - \<username>        The username for logging into the unifi protect server
-- \<password>        The password for logging into the unifi protect server
+- --password         Optional password flag (less secure because shell history may store it)
+- --password-env     Environment variable name that contains the password
 - \<path>            The path to the directory to download the files to
 - \<mode>            The mode to download the files in (daily or hourly) [possible values: daily, hourly]
 - \<recording_type>  The type of recording to download (rotating or timelapse) [possible values: rotating, timelapse]
 - \<start_date>      The start date/time to download files from (YYYY-MM-DD or YYYY-MM-DD-HH)
 - \<end_date>        The end date/time to download files to (YYYY-MM-DD or YYYY-MM-DD-HH)
+- \<cameras>         Comma-separated camera names/ids, or `all` / `*`
 
+If neither `--password` nor `--password-env` is provided, the CLI prompts for the password interactively with hidden input.
 
 # Example
-For example, to download all footage from your Unifi-Protect NVR, for all cameras, for the months of June and July 2023, run the following command:
+For example, to download all footage from your Unifi-Protect NVR, for all cameras, for the months of June and July 2023, use an environment variable:
 ```bash
-download https://<Unifi-Protect-IP-Addr> <username> <password> /path/to/destination/folder daily rotating 2023-06-01 2023-07-31
+export UNIFI_PROTECT_PASSWORD='<password>'
+unifi_protect_bulk_download download https://<Unifi-Protect-IP-Addr> <username> --password-env UNIFI_PROTECT_PASSWORD /path/to/destination/folder daily rotating 2023-06-01 2023-07-31 all
+```
+
+Or omit password flags entirely and enter it at the prompt:
+```bash
+unifi_protect_bulk_download download https://<Unifi-Protect-IP-Addr> <username> /path/to/destination/folder daily rotating 2023-06-01 2023-07-31 all
 ```
 In the above example, replace:
 1. __\<Unifi-Protect-IP-Addr\>__ with the IP-Address of your unifi-protect system
 2. __\<username\>__ with the username of your unifi-protect account
-3. __\<password\>__ with the password of your unifi-protect account
+3. __UNIFI_PROTECT_PASSWORD__ (or interactive prompt input) with the password of your unifi-protect account
 4. __/path/to/destination/folder__ with the path to the folder where you want to download the footage to
 5. __daily__ with __hourly__ in case you want one video per camera per hour, rather than per day of footage
 6. __rotating__ with __timelapse__ in case you want to download timelapse footage rather than real time recordings
-6. __2023-06-01__ (or for hourly precision __2023-06-01-08__) with the start date/time of the footage you want to download
-6. __2023-07-31__ (or for hourly precision __2023-07-31-18__) with the end date/time of the footage you want to download
+7. __2023-06-01__ (or for hourly precision __2023-06-01-08__) with the start date/time of the footage you want to download
+8. __2023-07-31__ (or for hourly precision __2023-07-31-18__) with the end date/time of the footage you want to download
+9. __all__ with a comma-separated list of camera names/ids for targeted downloads
 
 To download only specific hours (for example daylight hours), use `hourly` mode with hour precision in the date inputs.
+
+## Security note
+To avoid leaking credentials in shell history, prefer `--password-env <VAR>` or the interactive prompt. Use `--password` only when necessary.
 
 ## GPL3 LICENSE SYNOPSIS
 TL;DR* Here's what the license entails:
