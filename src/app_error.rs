@@ -1,5 +1,7 @@
 use chrono::{DateTime, Local, LocalResult, NaiveDateTime, TimeZone};
 use std::fmt;
+use std::io;
+use std::path::PathBuf;
 
 #[derive(Debug)]
 pub enum AppError {
@@ -22,6 +24,19 @@ pub enum AppError {
     },
     InvalidMode {
         mode: String,
+    },
+    OutputPathInaccessible {
+        path: PathBuf,
+        existing_parent: Option<PathBuf>,
+        missing_path: Option<PathBuf>,
+        source: io::Error,
+    },
+    OutputPathNotDirectory {
+        path: PathBuf,
+    },
+    OutputPathNotWritable {
+        path: PathBuf,
+        source: io::Error,
     },
     Api {
         context: String,
@@ -57,6 +72,38 @@ impl fmt::Display for AppError {
             }
             AppError::DateOverflow { context } => write!(f, "date arithmetic failed: {}", context),
             AppError::InvalidMode { mode } => write!(f, "invalid download mode '{}'", mode),
+            AppError::OutputPathInaccessible {
+                path,
+                existing_parent: Some(existing_parent),
+                missing_path: Some(missing_path),
+                source,
+            } => write!(
+                f,
+                "pre-download output path check failed: '{}' is not accessible: path exists up to '{}', but '{}' does not exist ({})",
+                path.display(),
+                existing_parent.display(),
+                missing_path.display(),
+                source
+            ),
+            AppError::OutputPathInaccessible { path, source, .. } => write!(
+                f,
+                "pre-download output path check failed: '{}' is not accessible: {}",
+                path.display(),
+                source
+            ),
+            AppError::OutputPathNotDirectory { path } => {
+                write!(
+                    f,
+                    "pre-download output path check failed: '{}' is not a directory",
+                    path.display()
+                )
+            }
+            AppError::OutputPathNotWritable { path, source } => write!(
+                f,
+                "pre-download output path check failed: '{}' is not writable: {}",
+                path.display(),
+                source
+            ),
             AppError::Api { context, source } => write!(f, "{}: {}", context, source),
         }
     }

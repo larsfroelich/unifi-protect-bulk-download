@@ -42,6 +42,9 @@ pub struct DownloadArgs {
     /// Comma-separated list of camera names/ids, or `all` / `*`.
     #[arg(value_delimiter = ',')]
     pub cameras: Vec<String>,
+    /// Create and remove a test file in the output directory before downloading.
+    #[arg(long)]
+    pub probe_output_path: bool,
 }
 
 #[derive(Clone, Debug, ValueEnum)]
