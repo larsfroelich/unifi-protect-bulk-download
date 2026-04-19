@@ -221,18 +221,18 @@ fn parse_date_or_hour(
     is_start: bool,
 ) -> Result<NaiveDateTime, chrono::ParseError> {
     // try to parse as date-time (YYYY-MM-DD-HH)
-    if let Ok(date_time) = NaiveDateTime::parse_from_str(date_or_hour, "%Y-%m-%d-%H") {
+    if let Ok(date_time) =
+        NaiveDateTime::parse_from_str(&format!("{}-00", date_or_hour), "%Y-%m-%d-%H-%M")
+    {
         return Ok(date_time);
     }
 
     // hourly parsing failed, try to parse as date (YYYY-MM-DD)
     let date = NaiveDate::parse_from_str(date_or_hour, "%Y-%m-%d")?;
-    if is_start {
-        NaiveDateTime::parse_from_str(&format!("{}-00", date.format("%Y-%m-%d")), "%Y-%m-%d-%H")
+    Ok(if is_start {
+        date.and_hms_opt(0, 0, 0)
     } else {
-        NaiveDateTime::parse_from_str(
-            &format!("{}-23-59-59", date.format("%Y-%m-%d")),
-            "%Y-%m-%d-%H-%M-%S",
-        )
+        date.and_hms_opt(23, 59, 59)
     }
+    .expect("hard-coded time should be valid"))
 }
