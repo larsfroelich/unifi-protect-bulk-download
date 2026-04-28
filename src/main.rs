@@ -5,6 +5,7 @@ use std::path::{Path, PathBuf};
 use unifi_protect::*;
 
 mod app_error;
+mod output_path;
 mod parse_args;
 
 #[tokio::main]
@@ -22,6 +23,8 @@ async fn main() {
 }
 
 async fn download(args: &DownloadArgs) -> Result<(), AppError> {
+    output_path::validate(Path::new(&args.out_path), args.probe_output_path)?;
+
     let start_date = parse_date_or_hour(&args.start_date, true)
         .map_err(|source| AppError::parse_date(&args.start_date, source))?;
     let end_date = parse_date_or_hour(&args.end_date, false)
